@@ -171,7 +171,7 @@ Use portugues do Brasil. Evite palavras robotizadas. Seja natural e engajador.`;
 
     let responseText: string;
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
       const result = await model.generateContent(prompt);
       responseText = result.response.text();
     } catch (geminiError: any) {
