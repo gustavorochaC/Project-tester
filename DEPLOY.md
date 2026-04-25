@@ -113,7 +113,7 @@ Apos o primeiro deploy, va no Dashboard da Vercel:
 - `AUTH_SECRET` — Chave secreta para JWT (min 32 chars)
 
 ### Opcionais (para funcionalidades extras)
-- `OPENAI_API_KEY` — Para geracao de posts com IA real
+- `GOOGLE_AI_API_KEY` — Para geracao de posts com IA real (Google Gemini, gratuito)
 - `META_APP_ID` e `META_APP_SECRET` — Para publicar no Instagram/Facebook
 - `LINKEDIN_CLIENT_ID` e `LINKEDIN_CLIENT_SECRET` — Para publicar no LinkedIn
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER` — Para WhatsApp real

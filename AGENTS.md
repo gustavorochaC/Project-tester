@@ -82,7 +82,7 @@ If the env var is missing, the feature works in **simulated/demo mode**:
 
 | Feature | Env Var | Fallback behavior |
 |---------|---------|-------------------|
-| AI post generation | `OPENAI_API_KEY` | Templates based on company profile |
+| AI post generation | `GOOGLE_AI_API_KEY` | Templates based on company profile |
 | Instagram/Facebook publish | `META_APP_ID`, `META_APP_SECRET` | Simulated publish |
 | LinkedIn publish | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | Simulated publish |
 | WhatsApp notifications | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER` | Console log + toast |
@@ -97,7 +97,7 @@ app/
   (app)/           # Logged-in pages (dashboard, calendar, pending, trends, reports, settings, agency, create-post)
   api/             # All API routes
     auth/          # login, register, logout, me
-    ai/generate    # OpenAI post generation
+    ai/generate    # Google Gemini post generation
     posts/         # CRUD posts
     clients/       # CRUD clients
     trends/        # CRUD trends
@@ -135,7 +135,7 @@ Required:
 - `NEXT_PUBLIC_APP_URL` — e.g. `https://social-pilot-app.vercel.app`
 
 Optional (see fallbacks above):
-- `OPENAI_API_KEY`
+- `GOOGLE_AI_API_KEY`
 - `META_APP_ID`, `META_APP_SECRET`
 - `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`
@@ -207,5 +207,5 @@ Apr 25 2026 — Login redirected to `/dashboard`, which did `fetch("${NEXT_PUBLI
 3. **Don't assume Radix UI** — components are `@base-ui/react` wrappers. `DropdownMenuTrigger` does NOT have `asChild`; Button `asChild` was custom-added.
 4. **Don't commit `.env`** — it's gitignored. Use `.env.example` as template.
 5. **Don't run `prisma migrate deploy` in `vercel-build`** — the builder can't reach Neon. Migrations are manual/CI-only.
-6. **Don't panic if OpenAI/Twilio/Resend is missing** — everything degrades to demo mode gracefully.
+6. **Don't panic if Google AI/Twilio/Resend is missing** — everything degrades to demo mode gracefully.
 7. **Don't `fetch()` internal APIs from Server Components** — call Prisma directly (see "Server Components" section above).

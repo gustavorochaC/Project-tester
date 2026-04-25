@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
-let openai: any = null;
-if (process.env.OPENAI_API_KEY) {
-  const { default: OpenAI } = await import("openai");
-  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let genAI: any = null;
+if (process.env.GOOGLE_AI_API_KEY) {
+  const { GoogleGenerativeAI } = await import("@google/generative-ai");
+  genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
 }
 
 const postTypePrompts: Record<string, string> = {
@@ -129,8 +129,8 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id },
     });
 
-    // If no OpenAI API key or client not initialized, use fallback generator
-    if (!openai) {
+    // Se nao houver chave do Google AI, usa fallback
+    if (!genAI) {
       const post = generateFallbackPost(type, profile, topic);
       return NextResponse.json({
         title: post.title,
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         date: date || new Date().toISOString().split("T")[0],
         time: time || "12:00",
         warning:
-          "Modo fallback: Configure OPENAI_API_KEY no .env para usar a IA real.",
+          "Modo fallback: Configure GOOGLE_AI_API_KEY no .env para usar a IA real.",
       });
     }
 
@@ -169,25 +169,15 @@ Responda APENAS em JSON no formato:
 
 Use portugues do Brasil. Evite palavras robotizadas. Seja natural e engajador.`;
 
-    let completion;
+    let responseText: string;
     try {
-      completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Voce e um assistente de marketing que gera posts para redes sociais em portugues do Brasil.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.8,
-        max_tokens: 500,
-      });
-    } catch (openaiError: any) {
-      console.error("OpenAI API error:", openaiError.status, openaiError.message);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const result = await model.generateContent(prompt);
+      responseText = result.response.text();
+    } catch (geminiError: any) {
+      console.error("Google AI API error:", geminiError.message);
 
-      if (openaiError.status === 429) {
+      if (geminiError.message?.includes("API key not valid") || geminiError.status === 400) {
         return NextResponse.json({
           title: generateFallbackPost(type, profile, topic).title,
           content: generateFallbackPost(type, profile, topic).content,
@@ -196,24 +186,11 @@ Use portugues do Brasil. Evite palavras robotizadas. Seja natural e engajador.`;
           date: date || new Date().toISOString().split("T")[0],
           time: time || "12:00",
           warning:
-            "Cota da OpenAI excedida (erro 429). Verifique seu plano e billing em https://platform.openai.com/settings/organization/billing/overview. Usando template de fallback.",
+            "Chave do Google AI invalida. Verifique sua GOOGLE_AI_API_KEY no dashboard da Vercel. Usando template de fallback.",
         });
       }
 
-      if (openaiError.status === 401) {
-        return NextResponse.json({
-          title: generateFallbackPost(type, profile, topic).title,
-          content: generateFallbackPost(type, profile, topic).content,
-          hashtags: generateFallbackPost(type, profile, topic).hashtags,
-          type,
-          date: date || new Date().toISOString().split("T")[0],
-          time: time || "12:00",
-          warning:
-            "Chave da OpenAI invalida ou revogada. Verifique sua OPENAI_API_KEY no dashboard da Vercel. Usando template de fallback.",
-        });
-      }
-
-      // Para outros erros da OpenAI, tambem usa fallback ao inves de quebrar com 500
+      // Para outros erros do Google AI, tambem usa fallback
       return NextResponse.json({
         title: generateFallbackPost(type, profile, topic).title,
         content: generateFallbackPost(type, profile, topic).content,
@@ -221,15 +198,14 @@ Use portugues do Brasil. Evite palavras robotizadas. Seja natural e engajador.`;
         type,
         date: date || new Date().toISOString().split("T")[0],
         time: time || "12:00",
-        warning: `Erro na API da OpenAI (${openaiError.status || "unknown"}). Usando template de fallback.`,
+        warning: `Erro na API do Google AI. Usando template de fallback.`,
       });
     }
 
-    const responseText = completion.choices[0].message.content || "";
     let generated;
 
     try {
-      // Try to parse JSON from response
+      // Tenta extrair JSON da resposta
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         generated = JSON.parse(jsonMatch[0]);
@@ -237,7 +213,7 @@ Use portugues do Brasil. Evite palavras robotizadas. Seja natural e engajador.`;
         throw new Error("No JSON found");
       }
     } catch {
-      // Fallback if AI doesn't return valid JSON
+      // Fallback se a IA nao retornar JSON valido
       const post = generateFallbackPost(type, profile, topic);
       generated = post;
     }
