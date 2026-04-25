@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/settings - get company profile and notifications
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId") || "1";
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const [profile, notifications] = await Promise.all([
-      prisma.companyProfile.findUnique({ where: { userId } }),
-      prisma.notificationSettings.findUnique({ where: { userId } }),
+      prisma.companyProfile.findUnique({ where: { userId: user.id } }),
+      prisma.notificationSettings.findUnique({ where: { userId: user.id } }),
     ]);
     return NextResponse.json({ profile, notifications });
   } catch (error) {
@@ -19,23 +22,28 @@ export async function GET(request: NextRequest) {
 
 // PUT /api/settings - update company profile and notifications
 export async function PUT(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const { userId = "1", profile, notifications } = body;
+    const { profile, notifications } = body;
 
     const updatedProfile = profile
       ? await prisma.companyProfile.upsert({
-          where: { userId },
+          where: { userId: user.id },
           update: profile,
-          create: { ...profile, userId },
+          create: { ...profile, userId: user.id },
         })
       : null;
 
     const updatedNotifications = notifications
       ? await prisma.notificationSettings.upsert({
-          where: { userId },
+          where: { userId: user.id },
           update: notifications,
-          create: { ...notifications, userId },
+          create: { ...notifications, userId: user.id },
         })
       : null;
 

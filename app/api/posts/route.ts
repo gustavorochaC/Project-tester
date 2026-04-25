@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/posts - list all posts
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const type = searchParams.get("type");
 
-  const where: any = {};
+  const where: any = { userId: user.id };
   if (status) where.status = status;
   if (type) where.type = type;
 
@@ -24,12 +30,23 @@ export async function GET(request: NextRequest) {
 
 // POST /api/posts - create a new post
 export async function POST(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const post = await prisma.post.create({
       data: {
-        ...body,
-        userId: body.userId || "1", // fallback for now
+        title: body.title,
+        content: body.content,
+        hashtags: body.hashtags,
+        type: body.type,
+        status: body.status,
+        date: body.date,
+        time: body.time,
+        userId: user.id,
       },
     });
     return NextResponse.json(post, { status: 201 });
