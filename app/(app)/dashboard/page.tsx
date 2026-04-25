@@ -5,14 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PublishNowButton } from "@/components/publish-now-button";
 import { statusColors, statusLabels, postTypeLabels } from "@/lib/mock-data";
-
-async function getDashboardData() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/dashboard`, {
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error("Failed to fetch dashboard");
-  return res.json();
-}
+import { getDashboardData } from "@/lib/dashboard-data";
 
 export default async function DashboardPage() {
   const data = await getDashboardData();

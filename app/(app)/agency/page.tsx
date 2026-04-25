@@ -3,17 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { planLabels } from "@/lib/mock-data";
-
-async function getClients() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/clients`, {
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error("Failed to fetch clients");
-  return res.json();
-}
+import { getClientsData } from "@/lib/clients-data";
 
 export default async function AgencyPage() {
-  const clients = await getClients();
+  const clients = await getClientsData();
 
   const totalPosts = clients.reduce((acc: number, c: any) => acc + c.postsThisMonth, 0);
   const totalPending = clients.reduce((acc: number, c: any) => acc + c.pendingPosts, 0);
