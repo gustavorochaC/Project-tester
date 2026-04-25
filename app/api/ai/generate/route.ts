@@ -169,19 +169,61 @@ Responda APENAS em JSON no formato:
 
 Use portugues do Brasil. Evite palavras robotizadas. Seja natural e engajador.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "Voce e um assistente de marketing que gera posts para redes sociais em portugues do Brasil.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.8,
-      max_tokens: 500,
-    });
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Voce e um assistente de marketing que gera posts para redes sociais em portugues do Brasil.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.8,
+        max_tokens: 500,
+      });
+    } catch (openaiError: any) {
+      console.error("OpenAI API error:", openaiError.status, openaiError.message);
+
+      if (openaiError.status === 429) {
+        return NextResponse.json({
+          title: generateFallbackPost(type, profile, topic).title,
+          content: generateFallbackPost(type, profile, topic).content,
+          hashtags: generateFallbackPost(type, profile, topic).hashtags,
+          type,
+          date: date || new Date().toISOString().split("T")[0],
+          time: time || "12:00",
+          warning:
+            "Cota da OpenAI excedida (erro 429). Verifique seu plano e billing em https://platform.openai.com/settings/organization/billing/overview. Usando template de fallback.",
+        });
+      }
+
+      if (openaiError.status === 401) {
+        return NextResponse.json({
+          title: generateFallbackPost(type, profile, topic).title,
+          content: generateFallbackPost(type, profile, topic).content,
+          hashtags: generateFallbackPost(type, profile, topic).hashtags,
+          type,
+          date: date || new Date().toISOString().split("T")[0],
+          time: time || "12:00",
+          warning:
+            "Chave da OpenAI invalida ou revogada. Verifique sua OPENAI_API_KEY no dashboard da Vercel. Usando template de fallback.",
+        });
+      }
+
+      // Para outros erros da OpenAI, tambem usa fallback ao inves de quebrar com 500
+      return NextResponse.json({
+        title: generateFallbackPost(type, profile, topic).title,
+        content: generateFallbackPost(type, profile, topic).content,
+        hashtags: generateFallbackPost(type, profile, topic).hashtags,
+        type,
+        date: date || new Date().toISOString().split("T")[0],
+        time: time || "12:00",
+        warning: `Erro na API da OpenAI (${openaiError.status || "unknown"}). Usando template de fallback.`,
+      });
+    }
 
     const responseText = completion.choices[0].message.content || "";
     let generated;
