@@ -33,8 +33,12 @@ export async function GET(request: NextRequest) {
   cookieStore.delete("google_oauth_state");
 
   try {
+    console.log("[Google OAuth] Exchanging code for tokens...");
     const tokens = await exchangeCodeForTokens(code);
+    console.log("[Google OAuth] Tokens received, verifying ID token...");
+
     const profile = await verifyGoogleIdToken(tokens.id_token);
+    console.log("[Google OAuth] Profile verified:", profile.email);
 
     if (!profile.email_verified) {
       return NextResponse.redirect(`${baseRedirect}/login?error=google_email_nao_verificado`);
@@ -44,15 +48,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${baseRedirect}/login?error=google_perfil_invalido`);
     }
 
+    console.log("[Google OAuth] Looking up user by googleId...");
     let user = await prisma.user.findUnique({
       where: { googleId: profile.sub },
     });
 
     if (!user) {
+      console.log("[Google OAuth] User not found by googleId, looking up by email...");
       user = await prisma.user.findUnique({
         where: { email: profile.email },
       });
       if (user) {
+        console.log("[Google OAuth] Linking googleId to existing user...");
         user = await prisma.user.update({
           where: { id: user.id },
           data: {
@@ -64,6 +71,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!user) {
+      console.log("[Google OAuth] Creating new user...");
       try {
         const result = await prisma.$transaction(async (tx) => {
           const newUser = await tx.user.create({
@@ -95,7 +103,9 @@ export async function GET(request: NextRequest) {
         });
 
         user = result;
+        console.log("[Google OAuth] New user created:", user.id);
       } catch (dbErr) {
+        console.error("[Google OAuth] DB error during user creation:", dbErr);
         // Race condition: another request created the user
         if (dbErr instanceof Prisma.PrismaClientKnownRequestError && dbErr.code === "P2002") {
           user = await prisma.user.findUnique({ where: { googleId: profile.sub } });
@@ -107,11 +117,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.log("[Google OAuth] Creating session for user:", user.id);
     await createSession(user.id);
+    console.log("[Google OAuth] Session created, redirecting to dashboard");
     return NextResponse.redirect(`${baseRedirect}/dashboard`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("Google OAuth callback error:", message);
-    return NextResponse.redirect(`${baseRedirect}/login?error=google_troca_code_falhou`);
+    const stack = err instanceof Error ? err.stack : "No stack";
+    console.error("[Google OAuth] CALLBACK ERROR:");
+    console.error("Message:", message);
+    console.error("Stack:", stack);
+    return NextResponse.redirect(`${baseRedirect}/login?error=google_troca_code_falhou&details=${encodeURIComponent(message)}`);
   }
 }
