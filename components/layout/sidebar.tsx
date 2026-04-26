@@ -12,6 +12,7 @@ import {
   Users,
   Rocket,
   Wand2,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/pending", label: "Pendentes", icon: Clock },
   { href: "/trends", label: "Tendencias", icon: TrendingUp },
   { href: "/reports", label: "Relatorios", icon: BarChart3 },
+  { href: "/integrations", label: "Integracoes", icon: Plug },
   { href: "/settings", label: "Configuracoes", icon: Settings },
   { href: "/agency", label: "Agencia", icon: Users },
 ];

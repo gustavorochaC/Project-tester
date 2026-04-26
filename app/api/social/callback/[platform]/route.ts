@@ -12,70 +12,84 @@ export async function GET(
   const isDemo = searchParams.get("demo") === "true";
 
   const user = await getCurrentUser();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   if (!user) {
-    return NextResponse.redirect(
-      new URL("/login", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
-    );
+    return NextResponse.redirect(new URL("/login", baseUrl));
   }
 
   try {
     if (isDemo || !code) {
-      // Demo mode - simulate connection
-      await prisma.socialAccount.upsert({
-        where: {
-          userId_platform: {
-            userId: user.id,
-            platform,
-          },
-        },
-        update: {
-          connected: true,
-          accountName: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Demo`,
-          accessToken: "demo-token",
-        },
-        create: {
+      await prisma.socialAccount.create({
+        data: {
           userId: user.id,
           platform,
-          accountName: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Demo`,
+          accountName: `${platform} Demo`,
           accessToken: "demo-token",
           connected: true,
         },
       });
+      return NextResponse.redirect(new URL("/integrations?connected=true", baseUrl));
+    }
+
+    if (platform === "facebook" || platform === "instagram") {
+      const appId = process.env.META_APP_ID;
+      const appSecret = process.env.META_APP_SECRET;
+      const redirectUri = `${baseUrl}/api/social/callback/${platform}`;
+
+      const tokenRes = await fetch(
+        `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${redirectUri}&client_secret=${appSecret}&code=${code}`
+      );
+      const tokenData = await tokenRes.json();
+      const accessToken = tokenData.access_token;
+
+      if (platform === "instagram") {
+        return NextResponse.redirect(
+          new URL(`/integrations/connect/select-page?platform=instagram&token=${accessToken}`, baseUrl)
+        );
+      }
 
       return NextResponse.redirect(
-        new URL("/settings?socialConnected=true", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
+        new URL(`/integrations/connect/select-page?platform=facebook&token=${accessToken}`, baseUrl)
       );
     }
 
-    // Real OAuth flow would exchange code for token here
-    // For now, fallback to demo
-    await prisma.socialAccount.upsert({
-      where: {
-        userId_platform: {
-          userId: user.id,
-          platform,
-        },
-      },
-      update: {
-        connected: true,
-        accountName: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Conectado`,
-        accessToken: "connected-token",
-      },
-      create: {
-        userId: user.id,
-        platform,
-        accountName: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Conectado`,
-        accessToken: "connected-token",
-        connected: true,
-      },
-    });
+    if (platform === "linkedin") {
+      const clientId = process.env.LINKEDIN_CLIENT_ID;
+      const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+      const redirectUri = `${baseUrl}/api/social/callback/linkedin`;
 
-    return NextResponse.redirect(
-      new URL("/settings?socialConnected=true", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
-    );
-  } catch (error) {
-    return NextResponse.redirect(
-      new URL("/settings?socialError=true", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
-    );
+      const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: redirectUri,
+          client_id: clientId!,
+          client_secret: clientSecret!,
+        }),
+      });
+      const tokenData = await tokenRes.json();
+      const accessToken = tokenData.access_token;
+      const expiresIn = tokenData.expires_in || 3600;
+      const expiresAt = new Date(Date.now() + expiresIn * 1000);
+      const refreshToken = tokenData.refresh_token || null;
+
+      const profileRes = await fetch("https://api.linkedin.com/v2/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const profileData = await profileRes.json();
+      const accountId = profileData.id;
+
+      return NextResponse.redirect(
+        new URL(`/integrations/connect/select-organization?token=${accessToken}&personId=${accountId}&expiresAt=${expiresAt.toISOString()}&refreshToken=${refreshToken || ""}`, baseUrl)
+      );
+    }
+
+    return NextResponse.redirect(new URL("/integrations?error=unknown_platform", baseUrl));
+  } catch (error: any) {
+    console.error("OAuth callback error:", error);
+    return NextResponse.redirect(new URL("/integrations?error=true", baseUrl));
   }
 }

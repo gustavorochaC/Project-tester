@@ -25,6 +25,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "Credenciais invalidas" },
+        { status: 401 }
+      );
+    }
+
     const isValid = await verifyPassword(password, user.password);
 
     if (!isValid) {

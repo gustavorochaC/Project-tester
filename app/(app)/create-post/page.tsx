@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Wand2,
@@ -38,6 +38,16 @@ export default function CreatePostPage() {
   const [loading, setLoading] = useState(false);
   const [generatedPost, setGeneratedPost] = useState<any>(null);
   const [warning, setWarning] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/social/accounts")
+      .then((res) => res.json())
+      .then((data) => setSocialAccounts(data));
+  }, []);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -82,6 +92,8 @@ export default function CreatePostPage() {
           status: "pendente",
           date: generatedPost.date,
           time: generatedPost.time,
+          image: imageUrl,
+          socialAccountIds: JSON.stringify(selectedAccounts),
         }),
       });
 
@@ -112,6 +124,8 @@ export default function CreatePostPage() {
           status: "aprovado",
           date: generatedPost.date,
           time: generatedPost.time,
+          image: imageUrl,
+          socialAccountIds: JSON.stringify(selectedAccounts),
         }),
       });
 
@@ -202,6 +216,27 @@ export default function CreatePostPage() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Imagem do Post</Label>
+              <Input
+                type="file"
+                accept="image/*,video/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setImageFile(file);
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  const res = await fetch("/api/upload", { method: "POST", body: formData });
+                  const data = await res.json();
+                  if (data.url) setImageUrl(data.url);
+                }}
+              />
+              {imageUrl && (
+                <img src={imageUrl} alt="Preview" className="w-32 h-32 object-cover rounded" />
+              )}
+            </div>
+
             <Button
               onClick={handleGenerate}
               disabled={loading}
@@ -273,6 +308,28 @@ export default function CreatePostPage() {
                       <Badge key={tag} variant="secondary">
                         {tag}
                       </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Publicar em:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {socialAccounts.map((account: any) => (
+                      <label key={account.id} className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedAccounts.includes(account.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAccounts([...selectedAccounts, account.id]);
+                            } else {
+                              setSelectedAccounts(selectedAccounts.filter((id) => id !== account.id));
+                            }
+                          }}
+                        />
+                        <span className="text-sm">{account.platform} — {account.accountName}</span>
+                      </label>
                     ))}
                   </div>
                 </div>

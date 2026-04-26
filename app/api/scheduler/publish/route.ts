@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { publishToPlatform } from "@/lib/social-publish";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const cronSecret = request.headers.get("x-cron-secret");
+  if (cronSecret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const now = new Date();
     const currentDate = now.toISOString().split("T")[0];
@@ -9,20 +15,10 @@ export async function GET() {
     const currentMinute = now.getMinutes().toString().padStart(2, "0");
     const currentTime = `${currentHour}:${currentMinute}`;
 
-    // Find approved posts scheduled for now (within last 5 minutes)
     const posts = await prisma.post.findMany({
-      where: {
-        status: "aprovado",
-        date: currentDate,
-      },
+      where: { status: "aprovado", date: currentDate },
       include: {
-        user: {
-          include: {
-            socialAccounts: {
-              where: { connected: true },
-            },
-          },
-        },
+        user: { include: { socialAccounts: { where: { connected: true } } } },
       },
     });
 
@@ -31,48 +27,45 @@ export async function GET() {
       const [nowHour, nowMinute] = currentTime.split(":").map(Number);
       const postMinutes = postHour * 60 + postMinute;
       const nowMinutes = nowHour * 60 + nowMinute;
-      // Publish if scheduled within last 5 minutes
       return nowMinutes >= postMinutes && nowMinutes - postMinutes <= 5;
     });
 
     const results = [];
 
     for (const post of postsToPublish) {
-      const accounts = post.user.socialAccounts;
+      let accountIds: string[] = [];
+      try {
+        accountIds = post.socialAccountIds ? JSON.parse(post.socialAccountIds) : [];
+      } catch {
+        accountIds = [];
+      }
+
+      const accounts = accountIds.length > 0
+        ? await prisma.socialAccount.findMany({
+            where: { id: { in: accountIds }, userId: post.userId, connected: true },
+          })
+        : post.user.socialAccounts;
 
       if (accounts.length === 0) {
-        results.push({
-          postId: post.id,
-          status: "skipped",
-          reason: "No connected social accounts",
-        });
+        results.push({ postId: post.id, status: "skipped", reason: "No accounts" });
         continue;
       }
 
-      // Simulate or real publish
-      const hasRealCredentials =
-        process.env.META_APP_ID || process.env.LINKEDIN_CLIENT_ID;
-
+      let anyFailed = false;
       for (const account of accounts) {
-        if (!hasRealCredentials) {
-          results.push({
-            postId: post.id,
-            platform: account.platform,
-            status: "published_simulated",
-          });
-        } else {
-          // Real API call would go here
-          results.push({
-            postId: post.id,
-            platform: account.platform,
-            status: "published",
-          });
-        }
+        const result = await publishToPlatform({ post, account });
+        results.push({
+          postId: post.id,
+          platform: account.platform,
+          status: result.success ? "published" : "failed",
+          error: result.error,
+        });
+        if (!result.success) anyFailed = true;
       }
 
       await prisma.post.update({
         where: { id: post.id },
-        data: { status: "publicado" },
+        data: { status: anyFailed ? "falhou" : "publicado" },
       });
     }
 
@@ -83,9 +76,6 @@ export async function GET() {
       results,
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Erro no scheduler" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

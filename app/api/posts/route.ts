@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
         status: body.status,
         date: body.date,
         time: body.time,
+        image: body.image || null,
+        socialAccountIds: body.socialAccountIds || null,
         userId: user.id,
       },
     });

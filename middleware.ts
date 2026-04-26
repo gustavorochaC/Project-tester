@@ -10,6 +10,8 @@ const apiPublicRoutes = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/logout",
+  "/api/auth/google",
+  "/api/auth/google/callback",
   "/api/social/callback",
   "/api/scheduler/publish",
 ];

@@ -14,7 +14,7 @@
 | Tailwind | v4 | Via `@tailwindcss/postcss` |
 | DB (prod) | PostgreSQL | Neon in production. SQLite was dev-only, removed. |
 | UI | shadcn + @base-ui/react | Button, DropdownMenu, etc. are `@base-ui/react` wrappers, not Radix. `asChild` was added manually to Button. |
-| Auth | Custom JWT | `jose` + `bcryptjs`. Session cookie = `session`. Not NextAuth. |
+| Auth | Custom JWT + Google OAuth 2.0 | `jose` + `bcryptjs`. Session cookie = `session`. Not NextAuth. |
 | Icons | lucide-react 1.11.0 | Missing icons: `Instagram`, `Facebook`, `Linkedin`. Use `Globe`, `Share2`, `MessageSquare` instead. |
 
 ---
@@ -43,7 +43,7 @@ DATABASE_URL="postgresql://..." npx tsx prisma/seed.ts       # seed prod
 
 - **Custom JWT auth** in `lib/auth.ts`. No NextAuth.
 - Session stored in HTTP-only cookie named `session`.
-- `middleware.ts` protects all routes except `/login`, `/register`, `/onboarding`, `/`, plus public API prefixes (`/api/auth/*`, `/api/social/callback`, `/api/scheduler/publish`).
+- `middleware.ts` protects all routes except `/login`, `/register`, `/onboarding`, `/`, plus public API prefixes (`/api/auth/*`, `/api/auth/google`, `/api/auth/google/callback`, `/api/social/callback`, `/api/scheduler/publish`).
 - `AUTH_SECRET` env var required. Default fallback exists but must be overridden in production.
 - To get current user in a Server Component / API route: `await getCurrentUser()` from `lib/auth`.
 
@@ -96,7 +96,7 @@ If the env var is missing, the feature works in **simulated/demo mode**:
 app/
   (app)/           # Logged-in pages (dashboard, calendar, pending, trends, reports, settings, agency, create-post)
   api/             # All API routes
-    auth/          # login, register, logout, me
+    auth/          # login, register, logout, me, google (OAuth)
     ai/generate    # Google Gemini post generation
     posts/         # CRUD posts
     clients/       # CRUD clients
@@ -135,6 +135,7 @@ Required:
 - `NEXT_PUBLIC_APP_URL` — e.g. `https://social-pilot-app.vercel.app`
 
 Optional (see fallbacks above):
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth 2.0 login
 - `GOOGLE_AI_API_KEY`
 - `META_APP_ID`, `META_APP_SECRET`
 - `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`
@@ -199,6 +200,10 @@ export async function getDashboardData() {
 Apr 25 2026 — Login redirected to `/dashboard`, which did `fetch("${NEXT_PUBLIC_APP_URL}/api/dashboard")`. On Vercel this env was missing, causing ECONNREFUSED and a blank 500 page. Fixed by replacing the fetch with direct Prisma calls (`lib/dashboard-data.ts`, `lib/clients-data.ts`).
 
 ---
+
+## Communication Rules
+
+- **Toda pergunta feita ao usuário deve ser em português.** (This rule is strict: whenever the AI needs to ask the user a question, it must be written in Portuguese.)
 
 ## Common Mistakes to Avoid
 

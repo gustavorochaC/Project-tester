@@ -113,6 +113,7 @@ Apos o primeiro deploy, va no Dashboard da Vercel:
 - `AUTH_SECRET` — Chave secreta para JWT (min 32 chars)
 
 ### Opcionais (para funcionalidades extras)
+- `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` — Para login com Google OAuth 2.0
 - `GOOGLE_AI_API_KEY` — Para geracao de posts com IA real (Google Gemini, gratuito)
 - `META_APP_ID` e `META_APP_SECRET` — Para publicar no Instagram/Facebook
 - `LINKEDIN_CLIENT_ID` e `LINKEDIN_CLIENT_SECRET` — Para publicar no LinkedIn

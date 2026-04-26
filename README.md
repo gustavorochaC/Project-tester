@@ -16,6 +16,7 @@
 O **Social Pilot** é uma plataforma completa de gestão de redes sociais que permite:
 
 - **📅 Agendamento Inteligente** — Programe posts para Instagram, Facebook e LinkedIn com um calendário visual intuitivo
+- **🔐 Login com Google** — Autenticação via Google OAuth 2.0 com auto-linking de contas existentes
 - **🤖 Geração de Conteúdo com IA** — Crie posts automaticamente usando Google Gemini baseado no perfil da sua empresa
 - **📊 Dashboard Analítico** — Acompanhe métricas, tendências e performance do seu conteúdo
 - **👥 Gestão de Clientes** — Organize múltiplos clientes e contas em um só lugar
@@ -33,7 +34,7 @@ O **Social Pilot** é uma plataforma completa de gestão de redes sociais que pe
 | **Estilização** | Tailwind CSS v4 + shadcn/ui | v4 |
 | **Banco de Dados** | PostgreSQL (Neon) | — |
 | **ORM** | Prisma | 5.22.0 |
-| **Autenticação** | JWT Custom (`jose` + `bcryptjs`) | — |
+| **Autenticação** | JWT Custom (`jose` + `bcryptjs`) + Google OAuth 2.0 | — |
 | **UI Components** | @base-ui/react | — |
 | **Ícones** | lucide-react | 1.11.0 |
 | **Deploy** | Vercel | — |
@@ -95,6 +96,10 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ### Opcionais (modo demo ativado se omitidas)
 
 ```env
+# Google OAuth 2.0 (Login com Google)
+GOOGLE_CLIENT_ID="seu-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="seu-client-secret"
+
 # Google Gemini AI
 GOOGLE_AI_API_KEY="sua-chave-gemini"
 
@@ -191,6 +196,7 @@ DATABASE_URL="postgresql://..." npx tsx prisma/seed.ts
 
 | Serviço | Funcionalidade | Fallback (sem env) |
 |---------|---------------|-------------------|
+| **Google OAuth** | Login com conta Google | Login com email/senha apenas |
 | **Google Gemini** | Geração de posts com IA | Templates baseados no perfil da empresa |
 | **Instagram/Facebook** | Publicação direta | Simulação de publicação |
 | **LinkedIn** | Publicação direta | Simulação de publicação |

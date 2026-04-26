@@ -14,7 +14,7 @@ export function PublishNowButton({ postId }: { postId: string }) {
       const res = await fetch("/api/social/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId, platforms: ["instagram", "facebook", "linkedin"] }),
+        body: JSON.stringify({ postId }),
       });
 
       const data = await res.json();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { to, subject, html, text } = body;
 
-    if (!to || !subject) {
+    const profile = await prisma.companyProfile.findUnique({ where: { userId: user.id } });
+    const targetEmail = to || profile?.notificationEmail || user.email;
+
+    if (!targetEmail || !subject) {
       return NextResponse.json(
         { error: "Destinatario e assunto sao obrigatorios" },
         { status: 400 }
@@ -30,7 +34,7 @@ export async function POST(request: NextRequest) {
 
         const { data, error } = await resend.emails.send({
           from: fromEmail,
-          to,
+          to: targetEmail,
           subject,
           html: html || text,
         });
@@ -52,14 +56,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback: simulated
-    console.log(`[SIMULATED EMAIL] To: ${to} | Subject: ${subject}`);
+    console.log(`[SIMULATED EMAIL] To: ${targetEmail} | Subject: ${subject}`);
     if (text) console.log(`Body: ${text}`);
 
     return NextResponse.json({
       success: true,
       sent: false,
       simulated: true,
-      message: `Email simulado para ${to}. Configure RESEND_API_KEY e FROM_EMAIL no .env para envio real.`,
+      message: `Email simulado para ${targetEmail}. Configure RESEND_API_KEY e FROM_EMAIL no .env para envio real.`,
     });
   } catch (error: any) {
     return NextResponse.json(
