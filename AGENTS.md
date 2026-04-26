@@ -201,6 +201,32 @@ Apr 25 2026 — Login redirected to `/dashboard`, which did `fetch("${NEXT_PUBLI
 
 ---
 
+## Security & Secrets (CRITICAL)
+
+**NEVER commit real API keys, tokens, passwords, or secrets to Git.**
+
+- `.env` is gitignored. Use `.env.example` with **fake/placeholder** values only.
+- `.env.local` is also gitignored and is the correct place for local secrets.
+- Documentation files (`PROJECT_CONTEXT.md`, `docs/*.md`) must NEVER contain real secrets.
+- Use `[REDACTED]` or `your-value-here` in all examples and documentation.
+- A pre-commit hook is configured in `.githooks/pre-commit` to block common secret patterns and `.env` files.
+  - Install it automatically: the repo sets `core.hooksPath = .githooks`
+  - If you need to bypass (false positive): `git commit --no-verify`
+
+**Patterns blocked by the hook:**
+- Twilio Account SIDs (`AC...`)
+- Google API Keys (`AIza...`)
+- Resend API Keys (`re_...`)
+- Generic secret-like strings (`sk-...`, `AKIA...`, `ghp_...`, `xox...`)
+
+**If a secret was accidentally committed:**
+1. Rotate (revoke/regenerate) the exposed credential IMMEDIATELY.
+2. Clean the Git history (use `git filter-repo` or rewrite history).
+3. Force push the cleaned history.
+4. Never assume "it's just a test key" — assume compromise.
+
+---
+
 ## Communication Rules
 
 - **Toda pergunta feita ao usuário deve ser em português.** (This rule is strict: whenever the AI needs to ask the user a question, it must be written in Portuguese.)
@@ -210,7 +236,7 @@ Apr 25 2026 — Login redirected to `/dashboard`, which did `fetch("${NEXT_PUBLI
 1. **Don't use Prisma v7 syntax** — this repo uses v5.22.0. No `prisma.config.ts`, no `adapter` in client constructor.
 2. **Don't `await params` incorrectly** — Next.js 16 dynamic route params are `Promise<{id}>`. Await them.
 3. **Don't assume Radix UI** — components are `@base-ui/react` wrappers. `DropdownMenuTrigger` does NOT have `asChild`; Button `asChild` was custom-added.
-4. **Don't commit `.env`** — it's gitignored. Use `.env.example` as template.
+4. **Don't commit `.env` or real secrets** — it's gitignored. Use `.env.example` as template with fake values. See "Security & Secrets" above.
 5. **Don't run `prisma migrate deploy` in `vercel-build`** — the builder can't reach Neon. Migrations are manual/CI-only.
 6. **Don't panic if Google AI/Twilio/Resend is missing** — everything degrades to demo mode gracefully.
 7. **Don't `fetch()` internal APIs from Server Components** — call Prisma directly (see "Server Components" section above).
